@@ -107,7 +107,7 @@
             //                    | GUI |     | SPC   | ENT |     | ALT |
 
             bindings = <
-&kp C_NEXT  &kp DE_N1  &kp DE_N2  &kp DE_N3  &kp DE_N4  &kp DE_N5  &kp DE_N6  &kp DE_N7  &kp DE_N8  &kp DE_N9  &kp N0  &kp DE_ESZETT  &kp C_STOP  &none  &none  &none  &none  &kp LS(LC(LEFT_ARROW))  &kp LEFT  &kp DOWN  &kp UP  &kp RIGHT  &none  &kp C_VOLUME_UP  &kp C_PREV  &none  &kp HOME  &kp PAGE_UP  &kp PAGE_DOWN  &kp END  &none  &none  &none  &none  &none  &kp C_VOLUME_DOWN  &none  &none  &kp SPACE  &kp SPACE  &none  &none
+&kp C_NEXT  &kp DE_N1  &kp DE_N2  &kp DE_N3  &kp DE_N4  &kp DE_N5  &kp DE_N6  &kp DE_N7  &kp DE_N8  &kp DE_N9  &kp N0  &kp DE_ESZETT  &kp C_STOP  &none  &none  &none  &kp LC(LS(LEFT_ARROW))  &none  &kp LEFT  &kp DOWN  &kp UP  &kp RIGHT  &none  &kp C_VOLUME_UP  &kp C_PREV  &none  &kp HOME  &kp PAGE_UP  &kp PAGE_DOWN  &kp END  &none  &none  &none  &none  &none  &kp C_VOLUME_DOWN  &none  &none  &kp SPACE  &kp SPACE  &none  &none
             >;
         };
 
@@ -128,7 +128,7 @@
         extra_layer_1 {
             display-name = "EXTRA 1";
             bindings = <
-&bt BT_SEL 0  &none  &none  &rgb_ug RGB_HUI  &rgb_ug RGB_HUD  &none  &none  &kp DE_N7  &kp DE_N8  &kp DE_N9  &none  &none  &bt BT_SEL 1  &rgb_ug RGB_TOG  &rgb_ug RGB_EFR  &rgb_ug RGB_BRI  &rgb_ug RGB_BRD  &rgb_ug RGB_EFF  &none  &kp DE_N4  &kp DE_N5  &kp DE_N6  &none  &none  &none  &none  &none  &rgb_ug RGB_SPI  &rgb_ug RGB_SPD  &none  &kp DE_N0  &kp DE_N1  &kp DE_N2  &kp DE_N3  &none  &bt BT_CLR  &none  &none  &none  &none  &none  &none
+&bt BT_SEL 0  &none  &none  &rgb_ug RGB_HUI  &rgb_ug RGB_HUD  &none  &none  &kp DE_N7  &kp DE_N8  &kp DE_N9  &none  &kp LC(LS(ESCAPE))  &bt BT_SEL 1  &rgb_ug RGB_TOG  &rgb_ug RGB_EFR  &rgb_ug RGB_BRI  &rgb_ug RGB_BRD  &rgb_ug RGB_EFF  &none  &kp DE_N4  &kp DE_N5  &kp DE_N6  &none  &none  &none  &none  &none  &rgb_ug RGB_SPI  &rgb_ug RGB_SPD  &none  &kp DE_N0  &kp DE_N1  &kp DE_N2  &kp DE_N3  &none  &bt BT_CLR  &none  &none  &none  &none  &none  &none
             >;
         };
 
