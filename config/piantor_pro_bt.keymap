@@ -93,7 +93,7 @@
             //                    | GUI | LWR | SPC | ENT | RSE  | ALT |
 
             bindings = <
-&kp TAB  &kp Q  &kp W  &kp E  &kp R  &kp T  &kp DE_Z  &kp U  &kp I  &kp O  &kp P  &kp DE_U_UMLAUT  &kp ESCAPE  &kp DE_A  &HML LEFT_ALT S  &kp DE_D  &HML LCTRL F  &kp G  &kp H  &HMR RCTRL J  &kp DE_K  &HMR RIGHT_ALT L  &kp DE_O_UMLAUT  &kp DE_A_UMLAUT  &kp LEFT_SHIFT  &kp DE_Y  &kp X  &kp C  &kp V  &kp B  &kp N  &kp M  &kp DE_COMMA  &kp DE_DOT  &kp DE_MINUS  &kp RIGHT_SHIFT  &lt 2 LS(BACKSPACE)  &lt 1 SPACE  &lt 3 DELETE  &kp LWIN  &lt 1 ENTER  &mo 2
+&kp TAB  &kp Q  &kp W  &kp E  &kp R  &kp T  &kp DE_Z  &kp U  &kp I  &kp O  &kp P  &kp DE_U_UMLAUT  &kp ESCAPE  &kp DE_A  &HML LEFT_ALT S  &kp DE_D  &HML LCTRL F  &kp G  &kp H  &HMR RCTRL J  &kp DE_K  &HMR LEFT_ALT L  &kp DE_O_UMLAUT  &kp DE_A_UMLAUT  &kp LEFT_SHIFT  &kp DE_Y  &kp X  &kp C  &kp V  &kp B  &kp N  &kp M  &kp DE_COMMA  &kp DE_DOT  &kp DE_MINUS  &kp RIGHT_SHIFT  &lt 2 LS(BACKSPACE)  &lt 1 SPACE  &lt 3 DELETE  &kp LWIN  &lt 1 ENTER  &mo 2
             >;
         };
 
