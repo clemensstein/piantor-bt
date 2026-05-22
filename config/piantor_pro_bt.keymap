@@ -97,7 +97,7 @@
             //                    | GUI |     | SPC | ENT |     | ALT |
 
             bindings = <
-&none  &kp DE_EXCLAMATION  &kp DE_DOUBLE_QUOTES  &kp DE_SECTION  &kp DE_DOLLAR  &kp DE_PERCENT  &kp DE_AMPERSAND  &kp DE_SLASH  &kp DE_LEFT_PARENTHESIS  &kp DE_RIGHT_PARENTHESIS  &kp DE_EQUAL  &kp DE_QUESTION  &none  &none  &kp DE_PIPE  &kp DE_GRAVE  &kp DE_TILDE  &none  &kp LEFT_BRACKET  &kp DE_LEFT_BRACE  &kp DE_RIGHT_BRACE  &kp DE_RIGHT_BRACKET  &kp DE_BACKSLASH  &kp K_MUTE  &none  &none  &kp DE_AT  &kp DE_CARET  &none  &none  &kp DE_HASH  &kp DE_PLUS  &kp DE_LESS_THAN  &kp DE_GREATER_THAN  &none  &kp CAPSLOCK  &none  &none  &none  &none  &none  &none
+&none  &kp DE_EXCLAMATION  &kp DE_DOUBLE_QUOTES  &kp DE_SECTION  &kp DE_DOLLAR  &kp DE_PERCENT  &kp DE_AMPERSAND  &kp DE_SLASH  &kp DE_LEFT_PARENTHESIS  &kp DE_RIGHT_PARENTHESIS  &kp DE_EQUAL  &kp DE_QUESTION  &none  &none  &kp DE_PIPE  &kp DE_GRAVE  &kp DE_TILDE  &none  &kp DE_LEFT_BRACKET  &kp DE_LEFT_BRACE  &kp DE_RIGHT_BRACE  &kp DE_RIGHT_BRACKET  &kp DE_BACKSLASH  &kp K_MUTE  &none  &none  &kp DE_AT  &kp DE_CARET  &none  &none  &kp DE_HASH  &kp DE_PLUS  &kp DE_LESS_THAN  &kp DE_GREATER_THAN  &none  &kp CAPSLOCK  &none  &none  &none  &none  &none  &none
             >;
         };
 
