@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Einen USB-Dongle für die Piantor Pro BT bauen</title>
+<meta name="description" content="Eine kabellose ZMK-Split-Tastatur über einen selbstgebauten nRF52840-Dongle betreiben: Einkaufsliste, Shield-Konfiguration, build.yaml und vollständiger Flash-Ablauf.">
+<style>
+  :root{
+    --ink:#16130f;
+    --paper:#f6f1e7;
+    --paper-2:#efe7d6;
+    --line:#d8cdb6;
+    --accent:#b2431f;
+    --accent-2:#1f6f5c;
+    --code-bg:#1c1814;
+    --code-ink:#e9e0cf;
+    --code-key:#e0a96d;
+    --code-str:#9ec99a;
+    --code-cmt:#857a6a;
+    --warn-bg:#fbe9e3;
+    --warn-line:#cf6a48;
+    --info-bg:#e7f0ec;
+    --info-line:#3f8a76;
+    --shadow:0 1px 0 rgba(0,0,0,.04), 0 12px 30px -18px rgba(40,30,15,.5);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    line-height:1.62;font-size:18px;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:840px;margin:0 auto;padding:0 22px}
+
+  header.hero{border-bottom:2px solid var(--ink);padding:60px 0 30px;margin-bottom:18px}
+  .kicker{font-family:"SF Mono",ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 14px}
+  h1{font-size:clamp(32px,5.6vw,52px);line-height:1.05;margin:0 0 18px;font-weight:600;letter-spacing:-.01em}
+  h1 em{font-style:italic;color:var(--accent)}
+  .standfirst{font-size:19.5px;max-width:64ch;margin:0;color:#473f33}
+  .byline{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:26px;align-items:center;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#6a6052}
+  .byline .dot{width:4px;height:4px;border-radius:50%;background:var(--accent);display:inline-block}
+
+  .intro{font-size:19px}
+  .intro p{margin:18px 0}
+
+  nav.toc{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin:30px 0 10px;box-shadow:var(--shadow)}
+  nav.toc h2{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;font-family:"SF Mono",ui-monospace,Menlo,monospace;color:#6a6052;margin:0 0 12px;font-weight:600}
+  nav.toc ol{margin:0;padding:0;list-style:none;counter-reset:toc}
+  nav.toc li{counter-increment:toc;margin:2px 0}
+  nav.toc a{display:flex;gap:12px;align-items:baseline;text-decoration:none;color:var(--ink);padding:5px 6px;border-radius:7px}
+  nav.toc a:hover{background:rgba(178,67,31,.09)}
+  nav.toc a::before{content:counter(toc,decimal-leading-zero);font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent);min-width:22px;font-weight:600}
+
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  .step-head{display:flex;gap:18px;align-items:flex-start;margin-bottom:8px}
+  .step-num{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13px;font-weight:600;color:#fff;background:var(--accent);min-width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-top:6px;flex:none}
+  h2.step{font-size:26px;margin:0;line-height:1.18;font-weight:600;letter-spacing:-.01em}
+  h3{font-size:18.5px;margin:26px 0 8px;font-weight:600}
+  p{margin:12px 0}
+  a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+  a:hover{color:#8a3216}
+  strong{font-weight:600}
+  ul,ol{padding-left:22px}
+  li{margin:7px 0}
+  code.inl{font-family:"SF Mono",ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;font-size:14.5px;background:var(--paper-2);border:1px solid var(--line);padding:1px 6px;border-radius:5px;color:#5b3216;white-space:nowrap}
+
+  .shop{width:100%;border-collapse:collapse;margin:20px 0;font-size:16px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  .shop thead th{background:var(--ink);color:var(--paper);text-align:left;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;padding:12px 16px}
+  .shop td{padding:13px 16px;border-top:1px solid var(--line);vertical-align:top}
+  .shop tr td:first-child{font-weight:600;white-space:nowrap}
+  .shop td .sub{display:block;font-size:13.5px;color:#6a6052;font-weight:400;margin-top:3px}
+  .shop td.price{font-family:"SF Mono",ui-monospace,Menlo,monospace;white-space:nowrap;color:var(--accent-2)}
+  .shop tr.opt td:first-child::after{content:"optional";display:inline-block;margin-left:8px;font-size:10px;font-family:"SF Mono",ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:#9a8f7a;padding:2px 7px;border-radius:999px;vertical-align:middle;font-weight:600}
+  .shop tfoot td{border-top:2px solid var(--ink);font-weight:600;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:14px}
+
+  .codewrap{margin:16px 0;border-radius:11px;overflow:hidden;box-shadow:var(--shadow);border:1px solid #2a241d}
+  .codebar{background:#2a241d;color:#cdbfa6;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;letter-spacing:.04em;gap:12px}
+  .codebar .fname{color:var(--code-key)}
+  pre{margin:0;background:var(--code-bg);color:var(--code-ink);padding:16px 18px;overflow-x:auto;font-family:"SF Mono",ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;font-size:13.5px;line-height:1.6}
+  pre .c{color:var(--code-cmt);font-style:italic}
+  pre .k{color:var(--code-key)}
+  pre .s{color:var(--code-str)}
+
+  .callout{border-radius:11px;padding:16px 18px 16px 20px;margin:18px 0;border-left:4px solid;font-size:16.5px}
+  .callout p{margin:6px 0}
+  .callout .tag{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;display:block;margin-bottom:4px}
+  .warn{background:var(--warn-bg);border-color:var(--warn-line)}
+  .warn .tag{color:var(--warn-line)}
+  .info{background:var(--info-bg);border-color:var(--info-line)}
+  .info .tag{color:var(--info-line)}
+
+  blockquote.src{margin:16px 0;padding:12px 18px;background:var(--paper-2);border-left:3px solid var(--accent-2);border-radius:0 8px 8px 0;font-size:16px;color:#473f33}
+  blockquote.src cite{display:block;margin-top:6px;font-size:12.5px;font-style:normal;font-family:"SF Mono",ui-monospace,Menlo,monospace;color:#6a6052}
+  blockquote.src cite a{font-style:normal}
+
+  .tree{background:var(--code-bg);color:var(--code-ink);border-radius:11px;padding:16px 18px;margin:16px 0;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13px;line-height:1.7;overflow-x:auto;box-shadow:var(--shadow)}
+  .tree .dir{color:var(--code-key)}
+  .tree .new{color:var(--code-str)}
+  .tree .cmt{color:var(--code-cmt)}
+
+  .pros-cons{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  .pc{border:1px solid var(--line);border-radius:11px;padding:14px 18px;background:#fff;box-shadow:var(--shadow)}
+  .pc h4{margin:0 0 8px;font-size:14px;font-family:"SF Mono",ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase}
+  .pc.plus h4{color:var(--accent-2)}
+  .pc.minus h4{color:var(--warn-line)}
+  .pc ul{padding-left:18px;margin:0}
+  .pc li{margin:6px 0;font-size:15.5px}
+
+  table.params{width:100%;border-collapse:collapse;margin:16px 0;font-size:15.5px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  table.params td{padding:10px 14px;border-top:1px solid var(--line);vertical-align:top}
+  table.params tr:first-child td{border-top:none}
+  table.params td:first-child{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13px;color:#5b3216;white-space:nowrap;width:1%}
+
+  footer{border-top:2px solid var(--ink);margin-top:30px;padding:28px 0 60px;font-size:14px;color:#6a6052}
+  footer a{color:var(--accent)}
+  footer h3{color:var(--ink);font-size:15px;margin:0 0 8px;font-family:"SF Mono",ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase}
+
+  @media (max-width:560px){
+    body{font-size:17px}
+    .step-head{gap:12px}
+    h2.step{font-size:22px}
+    pre{font-size:12px}
+    .pros-cons{grid-template-columns:1fr}
+    .shop{font-size:14.5px}
+    .shop td,.shop thead th{padding:10px 12px}
+  }
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">Mechanical Keyboards · ZMK · Guide</p>
+    <h1>Einen <em>USB-Dongle</em> für die Piantor&nbsp;Pro&nbsp;BT bauen</h1>
+    <p class="standfirst">Ein nRF52840-Controller als zentraler Vermittler verwandelt die kabellose Split-Tastatur in ein Gerät, das sich am Host als kabelgebundene USB-Tastatur meldet — verfügbar ab dem Bootloader, ohne BLE-Latenz, bei spürbar längerer Akkulaufzeit beider Hälften.</p>
+    <div class="byline">
+      <span>Keyboard: Piantor Pro BT (Keebart)</span>
+      <span class="dot"></span>
+      <span>Controller: Seeed XIAO nRF52840</span>
+      <span class="dot"></span>
+      <span>Firmware: ZMK</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="intro">
+    <p>Eine ZMK-Split-Tastatur verbindet sich per Bluetooth über ihre Central-Hälfte mit dem Host. Beim Kaltstart steht diese Verbindung erst, wenn das Betriebssystem den BLE-Stack initialisiert hat — zu spät für Bootauswahl, BIOS oder einen verschlüsselten Boot-Prompt. Ein Dongle umgeht das: Er übernimmt die Central-Rolle, hängt per USB am Host und erscheint dort als HID-Tastatur, die ab dem Bootloader anspricht.</p>
+    <p>Der Umbau ist reversibel und erfordert keine Hardware-Änderung an der Tastatur. Beide Hälften werden zu Peripherals umgeflasht und funken nur noch an den Dongle; der Wegfall der Central-Rolle verlängert ihre Laufzeit deutlich. Der gesamte Firmware-Build läuft über GitHub Actions — lokal wird nichts installiert.</p>
+  </div>
+
+  <nav class="toc">
+    <h2>Inhalt</h2>
+    <ol>
+      <li><a href="#s1">Einkaufsliste</a></li>
+      <li><a href="#s2">Funktionsweise &amp; Topologie</a></li>
+      <li><a href="#s3">Config forken</a></li>
+      <li><a href="#s4">Ordnerstruktur</a></li>
+      <li><a href="#s5">Dongle-Shield</a></li>
+      <li><a href="#s6">build.yaml</a></li>
+      <li><a href="#s7">Build &amp; Artefakte</a></li>
+      <li><a href="#s8">Flashen</a></li>
+      <li><a href="#s9">Pairing &amp; Test</a></li>
+      <li><a href="#s10">Fehlersuche</a></li>
+      <li><a href="#s11">Rückbau</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section id="s1" style="border-top:none">
+    <div class="step-head"><div class="step-num">01</div><h2 class="step">Einkaufsliste</h2></div>
+    <p>Als Dongle eignet sich jedes BLE-fähige, von ZMK unterstützte Board. Der <strong>Seeed XIAO nRF52840</strong> teilt sich Chip und Board-Target mit den Controllern in den Tastaturhälften und flasht per UF2-Massenspeicher, also ohne zusätzliche Werkzeuge oder Treiber.</p>
+
+    <table class="shop">
+      <thead><tr><th>Teil</th><th>Funktion / Auswahlkriterium</th><th>Richtwert</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Seeed XIAO nRF52840</td>
+          <td>Der Dongle.<span class="sub">BLE-Variante, nicht „Sense“ — deren IMU und Mikrofon bleiben ungenutzt. Auf „nRF52840 / BLE“ achten; die XIAO-Reihe existiert auch mit SAMD21, RP2040 und ESP32, die hier nicht passen.</span></td>
+          <td class="price">~10–15 €</td>
+        </tr>
+        <tr>
+          <td>USB-Datenkabel</td>
+          <td>Anbindung an den Host.<span class="sub">Muss Datenadern führen. C-auf-C bei freiem USB-C-Port am Host, sonst A-auf-C. Ein kurzes 90°-Winkelkabel (10–15 cm) reduziert den Hebel auf den Port.</span></td>
+          <td class="price">~3–5 €</td>
+        </tr>
+        <tr class="opt">
+          <td>XIAO-Gehäuse</td>
+          <td>Schutz der Platine.<span class="sub">Geschlossenes Dongle-Case ohne Pin-Durchbrüche, ausgelegt für ein Board ohne angelötete Header. Als 3D-Druckvorlage (Printables/Thingiverse) oder fertig erhältlich.</span></td>
+          <td class="price">~5–8 €</td>
+        </tr>
+      </tbody>
+      <tfoot><tr><td colspan="2">Summe inkl. Gehäuse</td><td class="price">~18–28 €</td></tr></tfoot>
+    </table>
+
+    <p>Der XIAO ist eine Platine mit USB-C-Buchse, kein bündiger USB-A-Stick — er sitzt am Kabelende neben dem Host. Wer einen flachen Stick im A-Port bevorzugt, kann einen <strong>Nordic nRF52840 Dongle (PCA10059)</strong> verwenden; dieser bringt keinen UF2-Bootloader mit und wird über <code class="inl">nrfutil</code> geflasht, was den Erst-Flash aufwändiger macht. Der restliche Ablauf ist identisch. An der Tastatur selbst ändert sich nichts: kein Akku, kein zweiter Controller, keine Adapter.</p>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2">
+    <div class="step-head"><div class="step-num">02</div><h2 class="step">Funktionsweise &amp; Topologie</h2></div>
+    <p>Im Standard-Split ist eine Hälfte <strong>Central</strong> (verbindet sich mit dem Host und empfängt die Events der anderen Hälfte), die andere <strong>Peripheral</strong>. Der Dongle wird zur neuen Central: Beide Hälften werden zu Peripherals, die ausschließlich an den Dongle funken, und der Dongle hängt per USB am Host.</p>
+
+    <blockquote class="src">
+      Das Ergebnis ist eine Split-Tastatur mit dem Dongle als Central. Die Verbindung zum Host ist einfacher, da Dongles typischerweise per USB angebunden sind; die ehemalige Central-Hälfte gewinnt an Akkulaufzeit, weil sie zur Peripherie wird.
+      <cite><a href="https://zmk.dev/docs/development/hardware-integration/dongle">zmk.dev — Keyboard Dongle</a></cite>
+    </blockquote>
+
+    <p>Latenzseitig verschiebt der Dongle die Rollen: Die ehemalige Central gewinnt einen zusätzlichen Hop (rund +1&nbsp;ms über USB), während die Peripherals einen BLE-Hop gegen einen USB-Hop tauschen. Laut ZMK-Doku sinkt dadurch im üblichen Fall — Dongle am USB, Tastatur zuvor per BLE am Host — die durchschnittliche Latenz, weil bei den Peripherals rund 6,5&nbsp;ms entfallen.</p>
+
+    <div class="pros-cons">
+      <div class="pc plus">
+        <h4>Gewinn</h4>
+        <ul>
+          <li>HID-Tastatur ab Bootloader/BIOS, keine BLE-Initialisierung nötig.</li>
+          <li>Längere Laufzeit beider Hälften.</li>
+          <li>Kein erneutes Pairing am Hauptrechner.</li>
+        </ul>
+      </div>
+      <div class="pc minus">
+        <h4>Kosten</h4>
+        <ul>
+          <li>Zusätzliches Board erforderlich.</li>
+          <li>Ohne Dongle ist die Tastatur funktionslos.</li>
+          <li>Einmaliger Konfigurations- und Flash-Aufwand.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>Voraussetzung: Die Tastatur muss im regulären BLE-Betrieb ohne Dongle funktionieren. Das stellt sicher, dass spätere Probleme dem Dongle-Setup zuzuordnen sind und nicht der Tastatur selbst.</p>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3">
+    <div class="step-head"><div class="step-num">03</div><h2 class="step">Config forken</h2></div>
+    <p>Grundlage ist Keebarts offizielle Konfiguration für die Piantor Pro BT. Sie enthält Tastatur-Shield, Keymap, nice!view-Display-Konfiguration und den GitHub-Actions-Workflow — der Dongle wird additiv ergänzt.</p>
+    <ol>
+      <li><a href="https://github.com/Keebart/zmk-config">github.com/Keebart/zmk-config</a> öffnen, <strong>Fork → Create fork</strong>.</li>
+      <li>Im eigenen Fork lässt sich der Browser-Editor mit der Taste <code class="inl">.</code> öffnen (github.dev, VS-Code im Browser) — bequemer als die Standard-Oberfläche, aber nicht zwingend.</li>
+    </ol>
+    <p>Sämtliche folgenden Änderungen erfolgen im Fork; jeder Commit löst automatisch einen Build aus.</p>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4">
+    <div class="step-head"><div class="step-num">04</div><h2 class="step">Ordnerstruktur</h2></div>
+    <p>Zielzustand, grün markiert die neuen bzw. erweiterten Dateien:</p>
+    <div class="tree">
+zmk-config/<br>
+├── <span class="dir">.github/workflows/</span>   <span class="cmt"># Actions-Workflow (vorhanden)</span><br>
+├── <span class="dir">boards/shields/</span><br>
+│&nbsp;&nbsp;&nbsp;└── <span class="dir">piantor/</span>          <span class="cmt"># Tastatur-Shield (vorhanden)</span><br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── piantor.overlay<br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="new">Kconfig.shield</span>            <span class="cmt"># erweitern</span><br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="new">Kconfig.defconfig</span>         <span class="cmt"># erweitern</span><br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="new">piantor_dongle.overlay</span>    <span class="cmt"># neu</span><br>
+├── <span class="dir">config/</span>             <span class="cmt"># Keymap (vorhanden)</span><br>
+└── <span class="new">build.yaml</span>          <span class="cmt"># anpassen</span>
+    </div>
+    <div class="callout warn">
+      <span class="tag">Namenskonvention verifizieren</span>
+      <p>Shield- und Board-Bezeichner variieren zwischen Keebart-Revisionen. Die maßgeblichen Namen stehen in der vorhandenen <code class="inl">build.yaml</code> (<code class="inl">shield:</code> und <code class="inl">board:</code>). Alle Vorkommen von <code class="inl">piantor</code> bzw. <code class="inl">seeeduino_xiao_ble</code> in diesem Guide entsprechend ersetzen, falls abweichend.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="s5">
+    <div class="step-head"><div class="step-num">05</div><h2 class="step">Dongle-Shield</h2></div>
+    <p>Der Dongle wird als reduziertes, privates Shield ohne eigene Tasten definiert, das aber Matrix-Transform und Physical-Layout der Tastatur referenziert, um Peripheral-Events auf Behaviors abzubilden. Vier Dateien im Ordner <code class="inl">boards/shields/piantor/</code>.</p>
+
+    <h3>Kconfig.shield</h3>
+    <p>Registriert das Shield. Vorhandene Datei ergänzen, sonst anlegen.</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">boards/shields/piantor/Kconfig.shield</span></div>
+<pre><span class="c"># Kein Leerzeichen nach dem Komma, keines im Namen.</span>
+config SHIELD_PIANTOR_DONGLE
+    def_bool $(shields_list_contains,piantor_dongle)</pre>
+    </div>
+
+    <h3>Kconfig.defconfig</h3>
+    <p>Definiert das Shield als Central und legt die Peripheral-Zahl fest. Zwei Hälften → <code class="inl">PERIPHERALS = 2</code>. <code class="inl">BT_MAX_CONN</code> = Peripherals + gewünschte BLE-Host-Profile (Default 5); <code class="inl">BT_MAX_PAIRED</code> identisch.</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">boards/shields/piantor/Kconfig.defconfig</span></div>
+<pre>if SHIELD_PIANTOR_DONGLE
+
+<span class="c"># Max. 16 Zeichen.</span>
+config ZMK_KEYBOARD_NAME
+    default <span class="s">"Piantor Dongle"</span>
+
+config ZMK_SPLIT_ROLE_CENTRAL
+    default y
+
+config ZMK_SPLIT
+    default y
+
+config ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS
+    default 2
+
+config BT_MAX_CONN
+    default 6
+
+config BT_MAX_PAIRED
+    default 6
+
+endif</pre>
+    </div>
+
+    <h3>piantor_dongle.overlay</h3>
+    <p>Grundgerüst mit Mock-kscan — der Dongle deklariert eine leere 0×0-Matrix, da er keine physischen Tasten besitzt:</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">boards/shields/piantor/piantor_dongle.overlay</span></div>
+<pre>#include &lt;dt-bindings/zmk/matrix_transform.h&gt;
+
+/ {
+    chosen {
+        zmk,kscan = &amp;mock_kscan;
+    };
+
+    mock_kscan: mock_kscan_0 {
+        compatible = <span class="s">"zmk,kscan-mock"</span>;
+        columns = &lt;0&gt;;
+        rows = &lt;0&gt;;
+        events = &lt;0&gt;;
+    };
+};</pre>
+    </div>
+
+    <p>Anschließend die <strong>Matrix-Transform</strong> der Tastatur in dieses Overlay übernehmen. Im Shield-Verzeichnis nach dem Node mit <code class="inl">compatible = "zmk,matrix-transform";</code> suchen; er hat die Form:</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">zu kopierender Node (Werte tastaturspezifisch)</span></div>
+<pre>default_transform: keymap_transform_0 {
+    compatible = <span class="s">"zmk,matrix-transform"</span>;
+    columns = &lt;12&gt;;
+    rows = &lt;4&gt;;
+    map = &lt;
+        <span class="c">// RC(r,c)-Einträge</span>
+    &gt;;
+};</pre>
+    </div>
+    <p>Den vollständigen Node als Kind des Root-Nodes (innerhalb <code class="inl">/ { … };</code>) einfügen und das Label notieren (hier <code class="inl">default_transform</code>). Bei mehreren Transforms den zur Layout-Variante passenden wählen.</p>
+
+    <p>Für <strong>ZMK Studio</strong> zusätzlich das <strong>Physical-Layout</strong> einbinden — andernfalls entfällt dieser Schritt, die Tastatur bleibt voll funktionsfähig, nur ohne Studio-Editor. Node bzw. Datei über <code class="inl">compatible = "zmk,physical-layout";</code> lokalisieren; bei Keebart liegt das Layout typischerweise in <code class="inl">piantor-layouts.dtsi</code>. Datei in den Shield-Ordner kopieren und referenzieren, Labels an die realen Namen angleichen:</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">piantor_dongle.overlay — Ergänzung</span></div>
+<pre>#include <span class="s">"piantor-layouts.dtsi"</span>
+
+&amp;physical_layout0 {
+    transform = &lt;&amp;default_transform&gt;;
+};
+
+/ {
+    chosen {
+        zmk,kscan = &amp;mock_kscan;
+        zmk,physical-layout = &amp;physical_layout0;
+    };
+};</pre>
+    </div>
+    <p>Bei mehreren Physical-Layouts alle zugehörigen Transforms übernehmen und jeweils zuordnen.</p>
+  </section>
+
+  <!-- 6 -->
+  <section id="s6">
+    <div class="step-head"><div class="step-num">06</div><h2 class="step">build.yaml</h2></div>
+    <p>Die <code class="inl">build.yaml</code> definiert die zu bauenden Firmware-Images. Sie erzeugt den Dongle, baut die <code class="inl">settings_reset</code>-Firmware mit und überschreibt die Split-Rolle beider Hälften per <code class="inl">cmake-args</code> auf Peripheral.</p>
+    <blockquote class="src">
+      Die passenden Zeilen für die Dongle-Firmware ergänzen und an den bestehenden Tastaturteilen CMake-Argumente setzen, die sie zu Peripherals machen. Vor dem Flashen der neuen Firmware muss auf allen Geräten die settings_reset-Firmware geflasht werden, damit sie sich miteinander pairen können.
+      <cite><a href="https://zmk.dev/docs/development/hardware-integration/dongle#building-the-firmware">zmk.dev — Building the Firmware</a></cite>
+    </blockquote>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">build.yaml</span></div>
+<pre>include:
+  <span class="c"># Dongle (Central)</span>
+  - board: seeeduino_xiao_ble
+    shield: piantor_dongle
+
+  <span class="c"># Reset-Firmware fuer alle drei Geraete</span>
+  - board: seeeduino_xiao_ble
+    shield: settings_reset
+
+  <span class="c"># Linke Haelfte als Peripheral</span>
+  - board: seeeduino_xiao_ble
+    shield: piantor_left
+    cmake-args: -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+
+  <span class="c"># Rechte Haelfte als Peripheral</span>
+  - board: seeeduino_xiao_ble
+    shield: piantor_right
+    cmake-args: -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n</pre>
+    </div>
+    <div class="callout warn">
+      <span class="tag">Display-Shields beibehalten</span>
+      <p>Bei nice!view-Displays enthalten die Hälften-Zeilen Zusatz-Shields, etwa <code class="inl">shield: piantor_left nice_view_adapter nice_view</code>. Diese Bezeichner unverändert aus der Original-<code class="inl">build.yaml</code> übernehmen und nur die <code class="inl">cmake-args</code>-Zeile ergänzen — andernfalls bleiben die Displays dunkel.</p>
+    </div>
+    <p>Der Workflow unter <code class="inl">.github/workflows/</code> reagiert auf jeden Commit; ein manuelles Pipeline-Setup entfällt. Status im Tab <strong>Actions</strong>: laufend (gelb), erfolgreich (grün), fehlgeschlagen (rot).</p>
+  </section>
+
+  <!-- 7 -->
+  <section id="s7">
+    <div class="step-head"><div class="step-num">07</div><h2 class="step">Build &amp; Artefakte</h2></div>
+    <p>Nach dem Commit unter <strong>Actions</strong> den aktuellen Lauf öffnen (Dauer ~2–5&nbsp;min) und nach Abschluss <code class="inl">firmware.zip</code> aus den <strong>Artifacts</strong> laden. Inhalt:</p>
+    <div class="tree">
+firmware/<br>
+├── <span class="new">piantor_dongle-seeeduino_xiao_ble-zmk.uf2</span>   <span class="cmt"># Dongle</span><br>
+├── <span class="new">piantor_left-seeeduino_xiao_ble-zmk.uf2</span>     <span class="cmt"># links</span><br>
+├── <span class="new">piantor_right-seeeduino_xiao_ble-zmk.uf2</span>    <span class="cmt"># rechts</span><br>
+└── <span class="new">settings_reset-seeeduino_xiao_ble-zmk.uf2</span>   <span class="cmt"># Reset</span>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="s8">
+    <div class="step-head"><div class="step-num">08</div><h2 class="step">Flashen</h2></div>
+    <p>Flash-Vorgang je Gerät: per USB-C anschließen, Reset-Taster doppelt antippen (bei Hälften ohne Taster die Reset-Pins zweimal kurz brücken bzw. den im Keymap hinterlegten Bootloader-Trigger nutzen), woraufhin der UF2-Massenspeicher erscheint (<code class="inl">XIAO-BOOT</code> / <code class="inl">NICENANO</code>); die <code class="inl">.uf2</code> darauf kopieren, das Volume unmountet nach Abschluss selbst.</p>
+
+    <h3>Phase 1 — settings_reset auf alle drei Geräte</h3>
+    <p>Die Reset-Firmware löscht die persistierten Bonds und stellt sicher, dass Dongle und Hälften sich anschließend sauber neu pairen. Wird sie ausgelassen oder nur partiell geflasht, finden sich die Geräte unter Umständen nicht.</p>
+    <table class="params">
+      <tr><td>settings_reset</td><td>→ Dongle (XIAO)</td></tr>
+      <tr><td>settings_reset</td><td>→ linke Hälfte</td></tr>
+      <tr><td>settings_reset</td><td>→ rechte Hälfte</td></tr>
+    </table>
+
+    <h3>Phase 2 — Betriebsfirmware</h3>
+    <table class="params">
+      <tr><td>piantor_dongle</td><td>→ Dongle (XIAO)</td></tr>
+      <tr><td>piantor_left</td><td>→ linke Hälfte</td></tr>
+      <tr><td>piantor_right</td><td>→ rechte Hälfte</td></tr>
+    </table>
+    <p>Seitenrichtig flashen: Vertauschen von Links/Rechts pairt zwar meist, spiegelt aber die Belegung.</p>
+  </section>
+
+  <!-- 9 -->
+  <section id="s9">
+    <div class="step-head"><div class="step-num">09</div><h2 class="step">Pairing &amp; Test</h2></div>
+    <p>Dongle per USB anschließen, beide Hälften in den Normalbetrieb versetzen (einschalten bzw. Ladekabel trennen). Die Verknüpfung erfolgt automatisch; der erste Aufbau kann 10–30&nbsp;s dauern, danach zeigen die nice!view-Displays den Verbindungsstatus. Eingabe in einem Texteditor verifiziert die Funktion.</p>
+    <div class="callout info">
+      <span class="tag">Pairing-Reihenfolge</span>
+      <p>Die Peripheral-Battery-Widgets ordnen sich nach der Pairing-Reihenfolge an. Für eine konsistente Anzeige nach dem Dongle-Flash zuerst die linke, dann die rechte Hälfte verbinden; bei mehr als zwei Peripherals von links nach rechts.</p>
+    </div>
+    <p>Funktionsnachweis für den Anwendungsfall: Neustart ins Bootloader-/BIOS-Menü — die Eingabe steht ohne BLE-Wartezeit zur Verfügung, da der Host eine kabelgebundene HID-Tastatur sieht.</p>
+  </section>
+
+  <!-- 10 -->
+  <section id="s10">
+    <div class="step-head"><div class="step-num">10</div><h2 class="step">Fehlersuche</h2></div>
+    <table class="params">
+      <tr><td>Build rot</td><td>Im Actions-Log den fehlgeschlagenen Schritt öffnen; meist Shield-/Ordnername-Diskrepanz in <code class="inl">build.yaml</code> oder Syntaxfehler in den Kconfig-Dateien (u.&nbsp;a. Leerzeichen nach dem Komma).</td></tr>
+      <tr><td>Kein UF2-Volume</td><td>Reines Ladekabel ohne Datenadern; Datenkabel verwenden. Doppel-Tap zügiger setzen.</td></tr>
+      <tr><td>Kein Pairing</td><td><code class="inl">settings_reset</code> nicht auf allen drei Geräten ausgeführt — Phase 1 vollständig wiederholen, dann Phase 2.</td></tr>
+      <tr><td>Displays dunkel</td><td>nice!view-Zusatz-Shields fehlen in den Hälften-Zeilen der <code class="inl">build.yaml</code>; aus dem Original übernehmen.</td></tr>
+    </table>
+    <p>Anlaufstellen: <a href="https://zmk.dev/docs/troubleshooting">ZMK-Troubleshooting</a>, <a href="https://zmk.dev/community/discord/invite">ZMK-Discord</a> und Keebarts <a href="https://discord.com/invite/725jumUfru">Community-Discord</a>.</p>
+  </section>
+
+  <!-- 11 -->
+  <section id="s11">
+    <div class="step-head"><div class="step-num">11</div><h2 class="step">Rückbau</h2></div>
+    <blockquote class="src">
+      Zum „Ent-dongeln“ genügt es, diese CMake-Argumente zu entfernen und die resultierende Firmware zu flashen — nach einem settings_reset.
+      <cite><a href="https://zmk.dev/docs/development/hardware-integration/dongle#building-the-firmware">zmk.dev — Building the Firmware</a></cite>
+    </blockquote>
+    <p>Praktisch: <code class="inl">cmake-args</code>-Zeilen aus der <code class="inl">build.yaml</code> entfernen, neu bauen, <code class="inl">settings_reset</code> auf beide Hälften, anschließend die regulären Images flashen. Damit ist der direkte BLE-Betrieb wiederhergestellt.</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h3>Quellen</h3>
+    <p>
+      ZMK — Keyboard Dongle: <a href="https://zmk.dev/docs/development/hardware-integration/dongle">zmk.dev/docs/development/hardware-integration/dongle</a><br>
+      Keebart zmk-config: <a href="https://github.com/Keebart/zmk-config">github.com/Keebart/zmk-config</a><br>
+      ZMK — Reset-Firmware: <a href="https://zmk.dev/docs/troubleshooting/connection-issues#building-a-reset-firmware">zmk.dev/docs/troubleshooting/connection-issues</a><br>
+      Piantor Pro BT: <a href="https://www.keebart.com/products/piantor-wireless">keebart.com/products/piantor-wireless</a>
+    </p>
+    <p style="margin-top:18px">Code und Zitate aus der ZMK-Dokumentation (CC&nbsp;BY-NC-SA&nbsp;4.0) und Keebarts öffentlicher Konfiguration. Board- und Shield-Bezeichner sind revisionsabhängig; maßgeblich ist die <code class="inl" style="font-size:13px">build.yaml</code> des eigenen Forks. Reversibler Umbau, Durchführung auf eigene Verantwortung.</p>
+  </div>
+</footer>
+
+</body>
+</html>
