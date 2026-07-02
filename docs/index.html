@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Einen USB-Dongle für die Piantor Pro BT bauen</title>
-<meta name="description" content="Eine kabellose ZMK-Split-Tastatur über einen selbstgebauten nRF52840-Dongle betreiben: Einkaufsliste, Shield-Konfiguration, build.yaml und vollständiger Flash-Ablauf.">
+<meta name="description" content="Wie dieses board-basierte ZMK-Config-Repo um einen nRF52840-Dongle (Seeed XIAO) erweitert wurde: Dongle-Shield, Keymap-Bruecke, build.yaml und der komplette Flash-Ablauf — so wie tatsaechlich umgesetzt.">
 <style>
   :root{
     --ink:#16130f;
@@ -132,15 +132,15 @@
 
 <header class="hero">
   <div class="wrap">
-    <p class="kicker">Mechanical Keyboards · ZMK · Guide</p>
+    <p class="kicker">Mechanical Keyboards · ZMK · Build Log</p>
     <h1>Einen <em>USB-Dongle</em> für die Piantor&nbsp;Pro&nbsp;BT bauen</h1>
-    <p class="standfirst">Ein nRF52840-Controller als zentraler Vermittler verwandelt die kabellose Split-Tastatur in ein Gerät, das sich am Host als kabelgebundene USB-Tastatur meldet — verfügbar ab dem Bootloader, ohne BLE-Latenz, bei spürbar längerer Akkulaufzeit beider Hälften.</p>
+    <p class="standfirst">Ein nRF52840-Controller als zentraler Vermittler verwandelt die kabellose Split-Tastatur in ein Gerät, das sich am Host als kabelgebundene USB-Tastatur meldet — verfügbar ab dem Bootloader, ohne BLE-Latenz, bei spürbar längerer Akkulaufzeit beider Hälften. Diese Fassung dokumentiert die Umsetzung <em>in diesem Repo</em>.</p>
     <div class="byline">
       <span>Keyboard: Piantor Pro BT (Keebart)</span>
       <span class="dot"></span>
       <span>Controller: Seeed XIAO nRF52840</span>
       <span class="dot"></span>
-      <span>Firmware: ZMK</span>
+      <span>Firmware: ZMK · Config: dieses Repo</span>
     </div>
   </div>
 </header>
@@ -149,7 +149,11 @@
 
   <div class="intro">
     <p>Eine ZMK-Split-Tastatur verbindet sich per Bluetooth über ihre Central-Hälfte mit dem Host. Beim Kaltstart steht diese Verbindung erst, wenn das Betriebssystem den BLE-Stack initialisiert hat — zu spät für Bootauswahl, BIOS oder einen verschlüsselten Boot-Prompt. Ein Dongle umgeht das: Er übernimmt die Central-Rolle, hängt per USB am Host und erscheint dort als HID-Tastatur, die ab dem Bootloader anspricht.</p>
-    <p>Der Umbau ist reversibel und erfordert keine Hardware-Änderung an der Tastatur. Beide Hälften werden zu Peripherals umgeflasht und funken nur noch an den Dongle; der Wegfall der Central-Rolle verlängert ihre Laufzeit deutlich. Der gesamte Firmware-Build läuft über GitHub Actions — lokal wird nichts installiert.</p>
+    <p>Der Umbau ist reversibel und erfordert keine Hardware-Änderung an der Tastatur. Beide Hälften werden zu Peripherals umgeflasht und funken nur noch an den Dongle; der Wegfall der Central-Rolle verlängert ihre Laufzeit. Der gesamte Firmware-Build läuft über GitHub Actions — lokal wird nichts installiert.</p>
+    <div class="callout info">
+      <span class="tag">Was diese Fassung besonders macht</span>
+      <p>Die meisten Dongle-Anleitungen gehen von Keebarts <em>shield-basierter</em> Upstream-Config aus (<code class="inl">shield: piantor_left</code> auf <code class="inl">seeeduino_xiao_ble</code>). <strong>Dieses Repo ist board-basiert:</strong> Die Hälften sind eigene Boards (<code class="inl">piantor_pro_bt_left</code> / <code class="inl">_right</code>) unter <code class="inl">boards/arm/piantor_pro_bt/</code>. Alle Schritte hier sind an diese Realität angepasst — verifiziert lauffähig (Tastatur wird im Bootmenü erkannt).</p>
+    </div>
   </div>
 
   <nav class="toc">
@@ -157,22 +161,24 @@
     <ol>
       <li><a href="#s1">Einkaufsliste</a></li>
       <li><a href="#s2">Funktionsweise &amp; Topologie</a></li>
-      <li><a href="#s3">Config forken</a></li>
+      <li><a href="#s3">Ausgangslage in diesem Repo</a></li>
       <li><a href="#s4">Ordnerstruktur</a></li>
       <li><a href="#s5">Dongle-Shield</a></li>
-      <li><a href="#s6">build.yaml</a></li>
-      <li><a href="#s7">Build &amp; Artefakte</a></li>
-      <li><a href="#s8">Flashen</a></li>
-      <li><a href="#s9">Pairing &amp; Test</a></li>
-      <li><a href="#s10">Fehlersuche</a></li>
-      <li><a href="#s11">Rückbau</a></li>
+      <li><a href="#s6">Keymap-Brücke &amp; Config</a></li>
+      <li><a href="#s7">build.yaml</a></li>
+      <li><a href="#s8">Build &amp; Artefakte</a></li>
+      <li><a href="#s9">Flashen</a></li>
+      <li><a href="#s10">Pairing &amp; Test</a></li>
+      <li><a href="#s11">RGB im Dongle-Betrieb</a></li>
+      <li><a href="#s12">Fehlersuche</a></li>
+      <li><a href="#s13">Rückbau</a></li>
     </ol>
   </nav>
 
   <!-- 1 -->
   <section id="s1" style="border-top:none">
     <div class="step-head"><div class="step-num">01</div><h2 class="step">Einkaufsliste</h2></div>
-    <p>Als Dongle eignet sich jedes BLE-fähige, von ZMK unterstützte Board. Der <strong>Seeed XIAO nRF52840</strong> teilt sich Chip und Board-Target mit den Controllern in den Tastaturhälften und flasht per UF2-Massenspeicher, also ohne zusätzliche Werkzeuge oder Treiber.</p>
+    <p>Als Dongle eignet sich jedes BLE-fähige, von ZMK unterstützte Board. Der <strong>Seeed XIAO nRF52840</strong> teilt sich Chip und SoC-Familie mit den Controllern in den Tastaturhälften und flasht per UF2-Massenspeicher, also ohne zusätzliche Werkzeuge oder Treiber.</p>
 
     <table class="shop">
       <thead><tr><th>Teil</th><th>Funktion / Auswahlkriterium</th><th>Richtwert</th></tr></thead>
@@ -184,7 +190,7 @@
         </tr>
         <tr>
           <td>USB-Datenkabel</td>
-          <td>Anbindung an den Host.<span class="sub">Muss Datenadern führen. C-auf-C bei freiem USB-C-Port am Host, sonst A-auf-C. Ein kurzes 90°-Winkelkabel (10–15 cm) reduziert den Hebel auf den Port.</span></td>
+          <td>Anbindung an den Host.<span class="sub">Muss Datenadern führen — reine Ladekabel scheitern lautlos (siehe Fehlersuche). C-auf-C bei freiem USB-C-Port am Host, sonst A-auf-C. Ein kurzes 90°-Winkelkabel reduziert den Hebel auf den Port.</span></td>
           <td class="price">~3–5 €</td>
         </tr>
         <tr class="opt">
@@ -196,28 +202,26 @@
       <tfoot><tr><td colspan="2">Summe inkl. Gehäuse</td><td class="price">~18–28 €</td></tr></tfoot>
     </table>
 
-    <p>Der XIAO ist eine Platine mit USB-C-Buchse, kein bündiger USB-A-Stick — er sitzt am Kabelende neben dem Host. Wer einen flachen Stick im A-Port bevorzugt, kann einen <strong>Nordic nRF52840 Dongle (PCA10059)</strong> verwenden; dieser bringt keinen UF2-Bootloader mit und wird über <code class="inl">nrfutil</code> geflasht, was den Erst-Flash aufwändiger macht. Der restliche Ablauf ist identisch. An der Tastatur selbst ändert sich nichts: kein Akku, kein zweiter Controller, keine Adapter.</p>
+    <p>Der XIAO ist eine Platine mit USB-C-Buchse, kein bündiger USB-A-Stick — er sitzt am Kabelende neben dem Host. An der Tastatur selbst ändert sich nichts: kein Akku, kein zweiter Controller, keine Adapter.</p>
   </section>
 
   <!-- 2 -->
   <section id="s2">
     <div class="step-head"><div class="step-num">02</div><h2 class="step">Funktionsweise &amp; Topologie</h2></div>
-    <p>Im Standard-Split ist eine Hälfte <strong>Central</strong> (verbindet sich mit dem Host und empfängt die Events der anderen Hälfte), die andere <strong>Peripheral</strong>. Der Dongle wird zur neuen Central: Beide Hälften werden zu Peripherals, die ausschließlich an den Dongle funken, und der Dongle hängt per USB am Host.</p>
+    <p>Im Standard-Split ist eine Hälfte <strong>Central</strong> (verbindet sich mit dem Host und empfängt die Events der anderen Hälfte), die andere <strong>Peripheral</strong>. Bei dieser Tastatur ist die <strong>linke Hälfte die Central</strong> (<code class="inl">ZMK_SPLIT_ROLE_CENTRAL default y</code> im Board-Kconfig). Der Dongle wird zur neuen Central: Beide Hälften werden zu Peripherals, die ausschließlich an den Dongle funken, und der Dongle hängt per USB am Host.</p>
 
     <blockquote class="src">
       Das Ergebnis ist eine Split-Tastatur mit dem Dongle als Central. Die Verbindung zum Host ist einfacher, da Dongles typischerweise per USB angebunden sind; die ehemalige Central-Hälfte gewinnt an Akkulaufzeit, weil sie zur Peripherie wird.
       <cite><a href="https://zmk.dev/docs/development/hardware-integration/dongle">zmk.dev — Keyboard Dongle</a></cite>
     </blockquote>
 
-    <p>Latenzseitig verschiebt der Dongle die Rollen: Die ehemalige Central gewinnt einen zusätzlichen Hop (rund +1&nbsp;ms über USB), während die Peripherals einen BLE-Hop gegen einen USB-Hop tauschen. Laut ZMK-Doku sinkt dadurch im üblichen Fall — Dongle am USB, Tastatur zuvor per BLE am Host — die durchschnittliche Latenz, weil bei den Peripherals rund 6,5&nbsp;ms entfallen.</p>
-
     <div class="pros-cons">
       <div class="pc plus">
         <h4>Gewinn</h4>
         <ul>
           <li>HID-Tastatur ab Bootloader/BIOS, keine BLE-Initialisierung nötig.</li>
+          <li>Kein langsames BLE-Aufwachen mehr (etwa nach PC-Neustart).</li>
           <li>Längere Laufzeit beider Hälften.</li>
-          <li>Kein erneutes Pairing am Hauptrechner.</li>
         </ul>
       </div>
       <div class="pc minus">
@@ -225,7 +229,7 @@
         <ul>
           <li>Zusätzliches Board erforderlich.</li>
           <li>Ohne Dongle ist die Tastatur funktionslos.</li>
-          <li>Einmaliger Konfigurations- und Flash-Aufwand.</li>
+          <li>RGB-Tasten &amp; BT-Profil-Tasten verlieren ihre Funktion (siehe §11).</li>
         </ul>
       </div>
     </div>
@@ -235,56 +239,61 @@
 
   <!-- 3 -->
   <section id="s3">
-    <div class="step-head"><div class="step-num">03</div><h2 class="step">Config forken</h2></div>
-    <p>Grundlage ist Keebarts offizielle Konfiguration für die Piantor Pro BT. Sie enthält Tastatur-Shield, Keymap, nice!view-Display-Konfiguration und den GitHub-Actions-Workflow — der Dongle wird additiv ergänzt.</p>
-    <ol>
-      <li><a href="https://github.com/Keebart/zmk-config">github.com/Keebart/zmk-config</a> öffnen, <strong>Fork → Create fork</strong>.</li>
-      <li>Im eigenen Fork lässt sich der Browser-Editor mit der Taste <code class="inl">.</code> öffnen (github.dev, VS-Code im Browser) — bequemer als die Standard-Oberfläche, aber nicht zwingend.</li>
-    </ol>
-    <p>Sämtliche folgenden Änderungen erfolgen im Fork; jeder Commit löst automatisch einen Build aus.</p>
+    <div class="step-head"><div class="step-num">03</div><h2 class="step">Ausgangslage in diesem Repo</h2></div>
+    <p>Ein „Config forken“ entfällt — <strong>dieses Repo ist bereits die eigene Config</strong> mit funktionierendem GitHub-Actions-Build. Entscheidend ist der strukturelle Unterschied zu generischen Dongle-Anleitungen:</p>
+    <table class="params">
+      <tr><td>Hälften</td><td>Sind eigene <strong>Boards</strong> (<code class="inl">piantor_pro_bt_left</code> / <code class="inl">_right</code>) in <code class="inl">boards/arm/piantor_pro_bt/</code> — nicht Shields auf einem Fremdboard.</td></tr>
+      <tr><td>Matrix-Transform</td><td>Liegt im <strong>Board</strong>: <code class="inl">piantor_pro_bt.dtsi</code> (Node <code class="inl">default_transform</code>, 42 Spalten).</td></tr>
+      <tr><td>Physical-Layouts</td><td>In <code class="inl">piantor_pro_bt-layouts.dtsi</code> (<code class="inl">default_layout</code>, <code class="inl">five_col_layout</code>).</td></tr>
+      <tr><td>Dongle-Board</td><td>Der XIAO nutzt das ZMK-Standardboard <code class="inl">seeeduino_xiao_ble</code>.</td></tr>
+      <tr><td>Keymap-Pflege</td><td>Über den <a href="https://nickcoutsos.github.io/keymap-editor/">nickcoutsos keymap-editor</a>, der <code class="inl">config/piantor_pro_bt.keymap</code> im Repo editiert (nicht ZMK Studio).</td></tr>
+    </table>
+    <p>Weil die Central die Keymap trägt und diese das Physical-Layout <code class="inl">&amp;default_layout</code> referenziert, muss der Dongle dieses Layout <em>und</em> die Transform kennen — das erledigt das Shield in §5, ganz ohne ZMK Studio.</p>
   </section>
 
   <!-- 4 -->
   <section id="s4">
     <div class="step-head"><div class="step-num">04</div><h2 class="step">Ordnerstruktur</h2></div>
-    <p>Zielzustand, grün markiert die neuen bzw. erweiterten Dateien:</p>
+    <p>Zielzustand, grün markiert die neuen bzw. geänderten Dateien:</p>
     <div class="tree">
-zmk-config/<br>
-├── <span class="dir">.github/workflows/</span>   <span class="cmt"># Actions-Workflow (vorhanden)</span><br>
+piantor-bt/<br>
+├── <span class="dir">.github/workflows/</span>            <span class="cmt"># Actions-Workflow (vorhanden)</span><br>
+├── <span class="dir">boards/arm/piantor_pro_bt/</span>     <span class="cmt"># Tastatur-Boards (vorhanden)</span><br>
+│&nbsp;&nbsp;&nbsp;├── piantor_pro_bt.dtsi          <span class="cmt"># enthaelt default_transform</span><br>
+│&nbsp;&nbsp;&nbsp;├── piantor_pro_bt-layouts.dtsi  <span class="cmt"># physical layouts</span><br>
+│&nbsp;&nbsp;&nbsp;├── <span class="new">piantor_pro_bt_left_defconfig</span>   <span class="cmt"># RGB aus (§11)</span><br>
+│&nbsp;&nbsp;&nbsp;└── <span class="new">piantor_pro_bt_right_defconfig</span>  <span class="cmt"># RGB aus (§11)</span><br>
 ├── <span class="dir">boards/shields/</span><br>
-│&nbsp;&nbsp;&nbsp;└── <span class="dir">piantor/</span>          <span class="cmt"># Tastatur-Shield (vorhanden)</span><br>
-│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── piantor.overlay<br>
-│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="new">Kconfig.shield</span>            <span class="cmt"># erweitern</span><br>
-│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="new">Kconfig.defconfig</span>         <span class="cmt"># erweitern</span><br>
-│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="new">piantor_dongle.overlay</span>    <span class="cmt"># neu</span><br>
-├── <span class="dir">config/</span>             <span class="cmt"># Keymap (vorhanden)</span><br>
-└── <span class="new">build.yaml</span>          <span class="cmt"># anpassen</span>
-    </div>
-    <div class="callout warn">
-      <span class="tag">Namenskonvention verifizieren</span>
-      <p>Shield- und Board-Bezeichner variieren zwischen Keebart-Revisionen. Die maßgeblichen Namen stehen in der vorhandenen <code class="inl">build.yaml</code> (<code class="inl">shield:</code> und <code class="inl">board:</code>). Alle Vorkommen von <code class="inl">piantor</code> bzw. <code class="inl">seeeduino_xiao_ble</code> in diesem Guide entsprechend ersetzen, falls abweichend.</p>
+│&nbsp;&nbsp;&nbsp;└── <span class="new">piantor_pro_bt_dongle/</span>         <span class="cmt"># NEU: Dongle-Shield</span><br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="new">Kconfig.shield</span><br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="new">Kconfig.defconfig</span><br>
+│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="new">piantor_pro_bt_dongle.overlay</span><br>
+├── <span class="dir">config/</span><br>
+│&nbsp;&nbsp;&nbsp;├── piantor_pro_bt.keymap        <span class="cmt"># deine Keymap (keymap-editor)</span><br>
+│&nbsp;&nbsp;&nbsp;├── <span class="new">piantor_pro_bt_dongle.keymap</span>  <span class="cmt"># NEU: includet die Keymap</span><br>
+│&nbsp;&nbsp;&nbsp;└── <span class="new">piantor_pro_bt_dongle.conf</span>    <span class="cmt"># NEU</span><br>
+└── <span class="new">build.yaml</span>                   <span class="cmt"># angepasst</span>
     </div>
   </section>
 
   <!-- 5 -->
   <section id="s5">
     <div class="step-head"><div class="step-num">05</div><h2 class="step">Dongle-Shield</h2></div>
-    <p>Der Dongle wird als reduziertes, privates Shield ohne eigene Tasten definiert, das aber Matrix-Transform und Physical-Layout der Tastatur referenziert, um Peripheral-Events auf Behaviors abzubilden. Vier Dateien im Ordner <code class="inl">boards/shields/piantor/</code>.</p>
+    <p>Der Dongle wird als reduziertes Shield ohne eigene Tasten definiert, das aber Physical-Layout und Matrix-Transform der Tastatur referenziert. Drei Dateien in <code class="inl">boards/shields/piantor_pro_bt_dongle/</code>.</p>
 
     <h3>Kconfig.shield</h3>
-    <p>Registriert das Shield. Vorhandene Datei ergänzen, sonst anlegen.</p>
     <div class="codewrap">
-      <div class="codebar"><span class="fname">boards/shields/piantor/Kconfig.shield</span></div>
+      <div class="codebar"><span class="fname">boards/shields/piantor_pro_bt_dongle/Kconfig.shield</span></div>
 <pre><span class="c"># Kein Leerzeichen nach dem Komma, keines im Namen.</span>
-config SHIELD_PIANTOR_DONGLE
-    def_bool $(shields_list_contains,piantor_dongle)</pre>
+config SHIELD_PIANTOR_PRO_BT_DONGLE
+    def_bool $(shields_list_contains,piantor_pro_bt_dongle)</pre>
     </div>
 
     <h3>Kconfig.defconfig</h3>
-    <p>Definiert das Shield als Central und legt die Peripheral-Zahl fest. Zwei Hälften → <code class="inl">PERIPHERALS = 2</code>. <code class="inl">BT_MAX_CONN</code> = Peripherals + gewünschte BLE-Host-Profile (Default 5); <code class="inl">BT_MAX_PAIRED</code> identisch.</p>
+    <p>Definiert das Shield als Central und legt die Peripheral-Zahl fest. Zwei Hälften → <code class="inl">PERIPHERALS = 2</code>. <code class="inl">BT_MAX_CONN</code> / <code class="inl">BT_MAX_PAIRED</code> = Peripherals + gewünschte Host-Profile.</p>
     <div class="codewrap">
-      <div class="codebar"><span class="fname">boards/shields/piantor/Kconfig.defconfig</span></div>
-<pre>if SHIELD_PIANTOR_DONGLE
+      <div class="codebar"><span class="fname">boards/shields/piantor_pro_bt_dongle/Kconfig.defconfig</span></div>
+<pre>if SHIELD_PIANTOR_PRO_BT_DONGLE
 
 <span class="c"># Max. 16 Zeichen.</span>
 config ZMK_KEYBOARD_NAME
@@ -308,15 +317,19 @@ config BT_MAX_PAIRED
 endif</pre>
     </div>
 
-    <h3>piantor_dongle.overlay</h3>
-    <p>Grundgerüst mit Mock-kscan — der Dongle deklariert eine leere 0×0-Matrix, da er keine physischen Tasten besitzt:</p>
+    <h3>piantor_pro_bt_dongle.overlay</h3>
+    <p>Mock-kscan (der Dongle hat keine Tasten), Wiederverwendung der Layout-Datei per relativem <code class="inl">#include</code>, und die beiden Transforms 1:1 aus dem Board-dtsi — damit die Central die Peripheral-Events korrekt auf die Keymap abbildet.</p>
     <div class="codewrap">
-      <div class="codebar"><span class="fname">boards/shields/piantor/piantor_dongle.overlay</span></div>
+      <div class="codebar"><span class="fname">boards/shields/piantor_pro_bt_dongle/piantor_pro_bt_dongle.overlay</span></div>
 <pre>#include &lt;dt-bindings/zmk/matrix_transform.h&gt;
+
+<span class="c">// Physical-Layouts der Tastatur wiederverwenden.</span>
+#include <span class="s">"../../arm/piantor_pro_bt/piantor_pro_bt-layouts.dtsi"</span>
 
 / {
     chosen {
         zmk,kscan = &amp;mock_kscan;
+        zmk,physical-layout = &amp;default_layout;
     };
 
     mock_kscan: mock_kscan_0 {
@@ -325,98 +338,111 @@ endif</pre>
         rows = &lt;0&gt;;
         events = &lt;0&gt;;
     };
-};</pre>
-    </div>
 
-    <p>Anschließend die <strong>Matrix-Transform</strong> der Tastatur in dieses Overlay übernehmen. Im Shield-Verzeichnis nach dem Node mit <code class="inl">compatible = "zmk,matrix-transform";</code> suchen; er hat die Form:</p>
-    <div class="codewrap">
-      <div class="codebar"><span class="fname">zu kopierender Node (Werte tastaturspezifisch)</span></div>
-<pre>default_transform: keymap_transform_0 {
-    compatible = <span class="s">"zmk,matrix-transform"</span>;
-    columns = &lt;12&gt;;
-    rows = &lt;4&gt;;
-    map = &lt;
-        <span class="c">// RC(r,c)-Einträge</span>
-    &gt;;
-};</pre>
-    </div>
-    <p>Den vollständigen Node als Kind des Root-Nodes (innerhalb <code class="inl">/ { … };</code>) einfügen und das Label notieren (hier <code class="inl">default_transform</code>). Bei mehreren Transforms den zur Layout-Variante passenden wählen.</p>
+    default_transform: keymap_transform_0 {
+        compatible = <span class="s">"zmk,matrix-transform"</span>;
+        columns = &lt;42&gt;;
+        rows = &lt;1&gt;;
+        map = &lt; <span class="c">/* 1:1 aus piantor_pro_bt.dtsi */</span> &gt;;
+    };
 
-    <p>Für <strong>ZMK Studio</strong> zusätzlich das <strong>Physical-Layout</strong> einbinden — andernfalls entfällt dieser Schritt, die Tastatur bleibt voll funktionsfähig, nur ohne Studio-Editor. Node bzw. Datei über <code class="inl">compatible = "zmk,physical-layout";</code> lokalisieren; bei Keebart liegt das Layout typischerweise in <code class="inl">piantor-layouts.dtsi</code>. Datei in den Shield-Ordner kopieren und referenzieren, Labels an die realen Namen angleichen:</p>
-    <div class="codewrap">
-      <div class="codebar"><span class="fname">piantor_dongle.overlay — Ergänzung</span></div>
-<pre>#include <span class="s">"piantor-layouts.dtsi"</span>
-
-&amp;physical_layout0 {
-    transform = &lt;&amp;default_transform&gt;;
+    five_col_transform: keymap_transform_1 {
+        compatible = <span class="s">"zmk,matrix-transform"</span>;
+        columns = &lt;36&gt;;
+        rows = &lt;1&gt;;
+        map = &lt; <span class="c">/* 1:1 aus piantor_pro_bt.dtsi */</span> &gt;;
+    };
 };
 
-/ {
-    chosen {
-        zmk,kscan = &amp;mock_kscan;
-        zmk,physical-layout = &amp;physical_layout0;
-    };
-};</pre>
+&amp;default_layout  { transform = &lt;&amp;default_transform&gt;; };
+&amp;five_col_layout { transform = &lt;&amp;five_col_transform&gt;; };</pre>
     </div>
-    <p>Bei mehreren Physical-Layouts alle zugehörigen Transforms übernehmen und jeweils zuordnen.</p>
+    <div class="callout warn">
+      <span class="tag">Relativer Include-Pfad</span>
+      <p>Der <code class="inl">#include "../../arm/piantor_pro_bt/…"</code> zeigt aus dem Shield-Ordner auf die Board-Layouts. Das baut in diesem Repo sauber. Löst der Pfad in einer anderen Umgebung nicht auf, stattdessen die beiden Layout-Nodes direkt ins Overlay kopieren.</p>
+    </div>
   </section>
 
   <!-- 6 -->
   <section id="s6">
-    <div class="step-head"><div class="step-num">06</div><h2 class="step">build.yaml</h2></div>
-    <p>Die <code class="inl">build.yaml</code> definiert die zu bauenden Firmware-Images. Sie erzeugt den Dongle, baut die <code class="inl">settings_reset</code>-Firmware mit und überschreibt die Split-Rolle beider Hälften per <code class="inl">cmake-args</code> auf Peripheral.</p>
-    <blockquote class="src">
-      Die passenden Zeilen für die Dongle-Firmware ergänzen und an den bestehenden Tastaturteilen CMake-Argumente setzen, die sie zu Peripherals machen. Vor dem Flashen der neuen Firmware muss auf allen Geräten die settings_reset-Firmware geflasht werden, damit sie sich miteinander pairen können.
-      <cite><a href="https://zmk.dev/docs/development/hardware-integration/dongle#building-the-firmware">zmk.dev — Building the Firmware</a></cite>
-    </blockquote>
+    <div class="step-head"><div class="step-num">06</div><h2 class="step">Keymap-Brücke &amp; Config</h2></div>
+    <p>Die Keymap liegt auf der Central — also künftig auf dem Dongle. Statt sie zu duplizieren, bekommt der Dongle eine <strong>Brücke</strong>, die die echte Keymap einbindet. So bleibt <code class="inl">config/piantor_pro_bt.keymap</code> die einzige Quelle, und der <strong>keymap-editor-Workflow ändert sich nicht</strong>: editieren → committen → Build → nur den Dongle neu flashen.</p>
     <div class="codewrap">
-      <div class="codebar"><span class="fname">build.yaml</span></div>
-<pre>include:
-  <span class="c"># Dongle (Central)</span>
-  - board: seeeduino_xiao_ble
-    shield: piantor_dongle
-
-  <span class="c"># Reset-Firmware fuer alle drei Geraete</span>
-  - board: seeeduino_xiao_ble
-    shield: settings_reset
-
-  <span class="c"># Linke Haelfte als Peripheral</span>
-  - board: seeeduino_xiao_ble
-    shield: piantor_left
-    cmake-args: -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
-
-  <span class="c"># Rechte Haelfte als Peripheral</span>
-  - board: seeeduino_xiao_ble
-    shield: piantor_right
-    cmake-args: -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n</pre>
+      <div class="codebar"><span class="fname">config/piantor_pro_bt_dongle.keymap</span></div>
+<pre><span class="c">/* Der Dongle nutzt exakt dieselbe Keymap wie die Tastatur. */</span>
+#include <span class="s">"piantor_pro_bt.keymap"</span></pre>
     </div>
-    <div class="callout warn">
-      <span class="tag">Display-Shields beibehalten</span>
-      <p>Bei nice!view-Displays enthalten die Hälften-Zeilen Zusatz-Shields, etwa <code class="inl">shield: piantor_left nice_view_adapter nice_view</code>. Diese Bezeichner unverändert aus der Original-<code class="inl">build.yaml</code> übernehmen und nur die <code class="inl">cmake-args</code>-Zeile ergänzen — andernfalls bleiben die Displays dunkel.</p>
+    <p>Dazu eine schlanke Config für die Funkstrecke Dongle ↔ Hälften (der Host hängt per USB, daher keine Windows-BLE-Fixes nötig):</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">config/piantor_pro_bt_dongle.conf</span></div>
+<pre><span class="c"># Mehr Sendeleistung fuer die Verbindung zu den Haelften.</span>
+CONFIG_BT_CTLR_TX_PWR_PLUS_8=y
+
+<span class="c"># Verbesserte Verbindungsstabilitaet (wie an den Haelften).</span>
+CONFIG_ZMK_BLE_EXPERIMENTAL_CONN=y</pre>
     </div>
-    <p>Der Workflow unter <code class="inl">.github/workflows/</code> reagiert auf jeden Commit; ein manuelles Pipeline-Setup entfällt. Status im Tab <strong>Actions</strong>: laufend (gelb), erfolgreich (grün), fehlgeschlagen (rot).</p>
+    <div class="callout info">
+      <span class="tag">Warum die Brücke greift</span>
+      <p>ZMK sucht die Keymap nach dem <em>Shield-Namen</em>: Der Build <code class="inl">seeeduino_xiao_ble</code> + <code class="inl">piantor_pro_bt_dongle</code> lädt <code class="inl">piantor_pro_bt_dongle.keymap</code> — und diese Datei zieht per <code class="inl">#include</code> die echte Keymap herein. <code class="inl">&amp;default_layout</code> darin wird durch das Overlay aus §5 aufgelöst.</p>
+    </div>
   </section>
 
   <!-- 7 -->
   <section id="s7">
-    <div class="step-head"><div class="step-num">07</div><h2 class="step">Build &amp; Artefakte</h2></div>
-    <p>Nach dem Commit unter <strong>Actions</strong> den aktuellen Lauf öffnen (Dauer ~2–5&nbsp;min) und nach Abschluss <code class="inl">firmware.zip</code> aus den <strong>Artifacts</strong> laden. Inhalt:</p>
-    <div class="tree">
-firmware/<br>
-├── <span class="new">piantor_dongle-seeeduino_xiao_ble-zmk.uf2</span>   <span class="cmt"># Dongle</span><br>
-├── <span class="new">piantor_left-seeeduino_xiao_ble-zmk.uf2</span>     <span class="cmt"># links</span><br>
-├── <span class="new">piantor_right-seeeduino_xiao_ble-zmk.uf2</span>    <span class="cmt"># rechts</span><br>
-└── <span class="new">settings_reset-seeeduino_xiao_ble-zmk.uf2</span>   <span class="cmt"># Reset</span>
+    <div class="step-head"><div class="step-num">07</div><h2 class="step">build.yaml</h2></div>
+    <p>Der Piantor-Block der <code class="inl">build.yaml</code> wurde durch das Dongle-Setup ersetzt (Corne/Sofle bleiben unberührt): Dongle bauen, <code class="inl">settings_reset</code> für alle drei Geräte, und beide Hälften per <code class="inl">cmake-args</code> auf Peripheral zwingen.</p>
+    <blockquote class="src">
+      Vor dem Flashen der neuen Firmware muss auf allen Geräten die settings_reset-Firmware geflasht werden, damit sie sich miteinander pairen können.
+      <cite><a href="https://zmk.dev/docs/development/hardware-integration/dongle#building-the-firmware">zmk.dev — Building the Firmware</a></cite>
+    </blockquote>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">build.yaml — Piantor-Block</span></div>
+<pre>include:
+  <span class="c"># --- Piantor Pro BT: Dongle-Setup ---</span>
+  <span class="c"># Dongle (Central) auf Seeed XIAO nRF52840</span>
+  - board: seeeduino_xiao_ble
+    shield: piantor_pro_bt_dongle
+
+  <span class="c"># Reset-Firmware fuer alle drei Geraete</span>
+  - board: seeeduino_xiao_ble
+    shield: settings_reset
+  - board: piantor_pro_bt_left
+    shield: settings_reset
+  - board: piantor_pro_bt_right
+    shield: settings_reset
+
+  <span class="c"># Beide Haelften als Peripheral (Central-Rolle abschalten)</span>
+  - board: piantor_pro_bt_left
+    cmake-args: -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+  - board: piantor_pro_bt_right
+    cmake-args: -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n</pre>
     </div>
+    <p>Die linke Hälfte ist per Default Central; der <code class="inl">cmake-args</code>-Override macht sie zum Peripheral. Für die rechte ist die Zeile nur der Vollständigkeit halber gesetzt (schadet nicht).</p>
   </section>
 
   <!-- 8 -->
   <section id="s8">
-    <div class="step-head"><div class="step-num">08</div><h2 class="step">Flashen</h2></div>
-    <p>Flash-Vorgang je Gerät: per USB-C anschließen, Reset-Taster doppelt antippen (bei Hälften ohne Taster die Reset-Pins zweimal kurz brücken bzw. den im Keymap hinterlegten Bootloader-Trigger nutzen), woraufhin der UF2-Massenspeicher erscheint (<code class="inl">XIAO-BOOT</code> / <code class="inl">NICENANO</code>); die <code class="inl">.uf2</code> darauf kopieren, das Volume unmountet nach Abschluss selbst.</p>
+    <div class="step-head"><div class="step-num">08</div><h2 class="step">Build &amp; Artefakte</h2></div>
+    <p>Jeder Commit löst den Workflow aus. Unter <strong>Actions</strong> den Lauf öffnen (~2–5&nbsp;min), nach Abschluss <code class="inl">firmware.zip</code> aus den <strong>Artifacts</strong> laden. Die Namen setzen sich aus Board + Shield zusammen:</p>
+    <div class="tree">
+firmware/<br>
+├── <span class="new">seeeduino_xiao_ble-piantor_pro_bt_dongle-zmk.uf2</span>  <span class="cmt"># Dongle</span><br>
+├── <span class="new">piantor_pro_bt_left-zmk.uf2</span>                       <span class="cmt"># links (Peripheral)</span><br>
+├── <span class="new">piantor_pro_bt_right-zmk.uf2</span>                      <span class="cmt"># rechts (Peripheral)</span><br>
+├── <span class="new">seeeduino_xiao_ble-settings_reset-zmk.uf2</span>         <span class="cmt"># Reset Dongle</span><br>
+├── <span class="new">piantor_pro_bt_left-settings_reset-zmk.uf2</span>        <span class="cmt"># Reset links</span><br>
+└── <span class="new">piantor_pro_bt_right-settings_reset-zmk.uf2</span>       <span class="cmt"># Reset rechts</span>
+    </div>
+    <p class="cmt" style="font-size:14px;color:#6a6052">Die genaue Reihenfolge von Board und Shield im Dateinamen kann je nach ZMK-Version variieren — maßgeblich sind die Schlüsselwörter <code class="inl">dongle</code>, <code class="inl">left</code>, <code class="inl">right</code>, <code class="inl">settings_reset</code>.</p>
+  </section>
+
+  <!-- 9 -->
+  <section id="s9">
+    <div class="step-head"><div class="step-num">09</div><h2 class="step">Flashen</h2></div>
+    <p>Flash-Vorgang je Gerät: per USB-C anschließen, Reset-Taster <strong>doppelt</strong> antippen, woraufhin der UF2-Massenspeicher erscheint (beim XIAO <code class="inl">XIAO-BOOT</code>); die <code class="inl">.uf2</code> darauf kopieren, das Volume unmountet selbst. Die drei vorhandenen Dateien (<code class="inl">CURRENT.UF2</code>, <code class="inl">INDEX.HTM</code>, <code class="inl">INFO_UF2.TXT</code>) gehören zum Bootloader — nicht anfassen.</p>
 
     <h3>Phase 1 — settings_reset auf alle drei Geräte</h3>
-    <p>Die Reset-Firmware löscht die persistierten Bonds und stellt sicher, dass Dongle und Hälften sich anschließend sauber neu pairen. Wird sie ausgelassen oder nur partiell geflasht, finden sich die Geräte unter Umständen nicht.</p>
+    <p>Löscht persistierte Bonds und sorgt dafür, dass Dongle und Hälften sich sauber neu pairen. Auslassen führt oft dazu, dass sie sich nicht finden.</p>
     <table class="params">
       <tr><td>settings_reset</td><td>→ Dongle (XIAO)</td></tr>
       <tr><td>settings_reset</td><td>→ linke Hälfte</td></tr>
@@ -425,44 +451,62 @@ firmware/<br>
 
     <h3>Phase 2 — Betriebsfirmware</h3>
     <table class="params">
-      <tr><td>piantor_dongle</td><td>→ Dongle (XIAO)</td></tr>
-      <tr><td>piantor_left</td><td>→ linke Hälfte</td></tr>
-      <tr><td>piantor_right</td><td>→ rechte Hälfte</td></tr>
+      <tr><td>…dongle</td><td>→ Dongle (XIAO)</td></tr>
+      <tr><td>…left</td><td>→ linke Hälfte</td></tr>
+      <tr><td>…right</td><td>→ rechte Hälfte</td></tr>
     </table>
     <p>Seitenrichtig flashen: Vertauschen von Links/Rechts pairt zwar meist, spiegelt aber die Belegung.</p>
-  </section>
 
-  <!-- 9 -->
-  <section id="s9">
-    <div class="step-head"><div class="step-num">09</div><h2 class="step">Pairing &amp; Test</h2></div>
-    <p>Dongle per USB anschließen, beide Hälften in den Normalbetrieb versetzen (einschalten bzw. Ladekabel trennen). Die Verknüpfung erfolgt automatisch; der erste Aufbau kann 10–30&nbsp;s dauern, danach zeigen die nice!view-Displays den Verbindungsstatus. Eingabe in einem Texteditor verifiziert die Funktion.</p>
     <div class="callout info">
-      <span class="tag">Pairing-Reihenfolge</span>
-      <p>Die Peripheral-Battery-Widgets ordnen sich nach der Pairing-Reihenfolge an. Für eine konsistente Anzeige nach dem Dongle-Flash zuerst die linke, dann die rechte Hälfte verbinden; bei mehr als zwei Peripherals von links nach rechts.</p>
+      <span class="tag">Spätere Keymap-Änderungen</span>
+      <p>Änderungen an der Keymap (inkl. Layer, Behaviors) betreffen nur die Central → <strong>nur den Dongle</strong> neu flashen, ohne <code class="inl">settings_reset</code>. Die Hälften bleiben unberührt. Nur board-/config-seitige Änderungen an den Hälften (z.&nbsp;B. RGB, §11) erfordern ein erneutes Flashen der jeweiligen Hälfte.</p>
     </div>
-    <p>Funktionsnachweis für den Anwendungsfall: Neustart ins Bootloader-/BIOS-Menü — die Eingabe steht ohne BLE-Wartezeit zur Verfügung, da der Host eine kabelgebundene HID-Tastatur sieht.</p>
   </section>
 
   <!-- 10 -->
   <section id="s10">
-    <div class="step-head"><div class="step-num">10</div><h2 class="step">Fehlersuche</h2></div>
-    <table class="params">
-      <tr><td>Build rot</td><td>Im Actions-Log den fehlgeschlagenen Schritt öffnen; meist Shield-/Ordnername-Diskrepanz in <code class="inl">build.yaml</code> oder Syntaxfehler in den Kconfig-Dateien (u.&nbsp;a. Leerzeichen nach dem Komma).</td></tr>
-      <tr><td>Kein UF2-Volume</td><td>Reines Ladekabel ohne Datenadern; Datenkabel verwenden. Doppel-Tap zügiger setzen.</td></tr>
-      <tr><td>Kein Pairing</td><td><code class="inl">settings_reset</code> nicht auf allen drei Geräten ausgeführt — Phase 1 vollständig wiederholen, dann Phase 2.</td></tr>
-      <tr><td>Displays dunkel</td><td>nice!view-Zusatz-Shields fehlen in den Hälften-Zeilen der <code class="inl">build.yaml</code>; aus dem Original übernehmen.</td></tr>
-    </table>
-    <p>Anlaufstellen: <a href="https://zmk.dev/docs/troubleshooting">ZMK-Troubleshooting</a>, <a href="https://zmk.dev/community/discord/invite">ZMK-Discord</a> und Keebarts <a href="https://discord.com/invite/725jumUfru">Community-Discord</a>.</p>
+    <div class="step-head"><div class="step-num">10</div><h2 class="step">Pairing &amp; Test</h2></div>
+    <p>Dongle per USB anschließen, beide Hälften in den Normalbetrieb versetzen (einschalten bzw. Ladekabel trennen). Die Verknüpfung erfolgt automatisch; der erste Aufbau kann 10–30&nbsp;s dauern. Eingabe in einem Texteditor verifiziert die Funktion.</p>
+    <p>Funktionsnachweis für den Anwendungsfall: Neustart ins Bootloader-/BIOS-Menü — die Eingabe steht ohne BLE-Wartezeit zur Verfügung, da der Host eine kabelgebundene HID-Tastatur sieht. <strong>In diesem Setup verifiziert:</strong> Die Tastatur wird im Bootmenü erkannt.</p>
   </section>
 
   <!-- 11 -->
   <section id="s11">
-    <div class="step-head"><div class="step-num">11</div><h2 class="step">Rückbau</h2></div>
+    <div class="step-head"><div class="step-num">11</div><h2 class="step">RGB im Dongle-Betrieb</h2></div>
+    <p>RGB-Underglow-Befehle (<code class="inl">&amp;rgb_ug …</code>) werden auf der <strong>Central</strong> ausgeführt und von dort an die Peripherals relayt. Die neue Central ist der Dongle — er hat weder LED-Hardware noch aktiviertes Underglow, verarbeitet die RGB-Tasten also nicht. Ohne Zusatzaufwand bleiben die RGB-Tasten damit wirkungslos.</p>
+    <p>In diesem Repo wurde daher RGB auf beiden Hälften <strong>deaktiviert</strong> — die LEDs bleiben dunkel und beide Seiten sparen Akku:</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname">boards/arm/piantor_pro_bt/piantor_pro_bt_{left,right}_defconfig</span></div>
+<pre><span class="c"># RGB underglow deaktiviert (im Dongle-Betrieb ohnehin nicht steuerbar).</span>
+CONFIG_ZMK_RGB_UNDERGLOW=n</pre>
+    </div>
+    <p>Konsequenterweise wurden auch die nun funktionslosen RGB- und BT-Profil-Tasten aus dem Extra-Layer der Keymap entfernt. (Die <code class="inl">&amp;bt</code>-Tasten schalteten BLE-Host-Profile der Central um — überflüssig, da der Dongle per USB am Host hängt.)</p>
+    <div class="callout info">
+      <span class="tag">RGB trotzdem behalten?</span>
+      <p>Wer RGB vom Dongle aus steuern will, gibt dem Dongle einen „Phantom“-LED-Strip (ein WS2812-Gerät auf einem ungenutzten Pin, an dem physisch nichts hängt) und aktiviert <code class="inl">CONFIG_ZMK_RGB_UNDERGLOW=y</code> auf dem Dongle. Dann verarbeitet die Central die RGB-Tasten und relayt sie an die Hälften. Bekanntes Muster, aber hardware-spezifisch und mehr Aufwand — hier bewusst nicht umgesetzt.</p>
+    </div>
+  </section>
+
+  <!-- 12 -->
+  <section id="s12">
+    <div class="step-head"><div class="step-num">12</div><h2 class="step">Fehlersuche</h2></div>
+    <table class="params">
+      <tr><td>Build rot</td><td>Im Actions-Log den fehlgeschlagenen Schritt öffnen; meist Namensdiskrepanz in <code class="inl">build.yaml</code>, ein nicht auflösender Include-Pfad im Overlay (§5) oder ein Syntaxfehler in den Kconfig-Dateien (u.&nbsp;a. Leerzeichen nach dem Komma).</td></tr>
+      <tr><td>Kein UF2-Volume</td><td>Reines Ladekabel ohne Datenadern; Datenkabel verwenden. Doppel-Tap zügiger setzen. Buntes Blinken der RGB-LED des XIAO = Werks-/App-Firmware, <em>nicht</em> Bootloader — im Bootloader pulsiert die einzelne LED langsam.</td></tr>
+      <tr><td>Kein Pairing</td><td><code class="inl">settings_reset</code> nicht auf allen drei Geräten ausgeführt — Phase 1 vollständig wiederholen, dann Phase 2.</td></tr>
+      <tr><td>RGB-Tasten ohne Wirkung</td><td>Erwartet — siehe §11.</td></tr>
+    </table>
+    <p>Anlaufstellen: <a href="https://zmk.dev/docs/troubleshooting">ZMK-Troubleshooting</a>, <a href="https://zmk.dev/community/discord/invite">ZMK-Discord</a> und Keebarts <a href="https://discord.com/invite/725jumUfru">Community-Discord</a>.</p>
+  </section>
+
+  <!-- 13 -->
+  <section id="s13">
+    <div class="step-head"><div class="step-num">13</div><h2 class="step">Rückbau</h2></div>
     <blockquote class="src">
       Zum „Ent-dongeln“ genügt es, diese CMake-Argumente zu entfernen und die resultierende Firmware zu flashen — nach einem settings_reset.
       <cite><a href="https://zmk.dev/docs/development/hardware-integration/dongle#building-the-firmware">zmk.dev — Building the Firmware</a></cite>
     </blockquote>
-    <p>Praktisch: <code class="inl">cmake-args</code>-Zeilen aus der <code class="inl">build.yaml</code> entfernen, neu bauen, <code class="inl">settings_reset</code> auf beide Hälften, anschließend die regulären Images flashen. Damit ist der direkte BLE-Betrieb wiederhergestellt.</p>
+    <p>Praktisch für dieses Repo: Den Dongle-Block in der <code class="inl">build.yaml</code> wieder auf die Standard-Einträge der Hälften zurücksetzen (ohne <code class="inl">cmake-args</code>), neu bauen, <code class="inl">settings_reset</code> auf beide Hälften, anschließend die regulären Board-Images flashen — die linke Hälfte ist dann wieder Central. Die Dongle-Dateien (Shield, <code class="inl">*_dongle.keymap</code>/<code class="inl">.conf</code>) können liegen bleiben; sie werden ohne die entsprechenden <code class="inl">build.yaml</code>-Zeilen einfach nicht gebaut. RGB lässt sich per <code class="inl">CONFIG_ZMK_RGB_UNDERGLOW=y</code> reaktivieren.</p>
   </section>
 
 </div>
@@ -472,11 +516,12 @@ firmware/<br>
     <h3>Quellen</h3>
     <p>
       ZMK — Keyboard Dongle: <a href="https://zmk.dev/docs/development/hardware-integration/dongle">zmk.dev/docs/development/hardware-integration/dongle</a><br>
-      Keebart zmk-config: <a href="https://github.com/Keebart/zmk-config">github.com/Keebart/zmk-config</a><br>
+      ZMK — RGB Underglow (Split): <a href="https://zmk.dev/docs/keymaps/behaviors/underglow">zmk.dev/docs/keymaps/behaviors/underglow</a><br>
       ZMK — Reset-Firmware: <a href="https://zmk.dev/docs/troubleshooting/connection-issues#building-a-reset-firmware">zmk.dev/docs/troubleshooting/connection-issues</a><br>
+      keymap-editor: <a href="https://nickcoutsos.github.io/keymap-editor/">nickcoutsos.github.io/keymap-editor</a><br>
       Piantor Pro BT: <a href="https://www.keebart.com/products/piantor-wireless">keebart.com/products/piantor-wireless</a>
     </p>
-    <p style="margin-top:18px">Code und Zitate aus der ZMK-Dokumentation (CC&nbsp;BY-NC-SA&nbsp;4.0) und Keebarts öffentlicher Konfiguration. Board- und Shield-Bezeichner sind revisionsabhängig; maßgeblich ist die <code class="inl" style="font-size:13px">build.yaml</code> des eigenen Forks. Reversibler Umbau, Durchführung auf eigene Verantwortung.</p>
+    <p style="margin-top:18px">Dokumentiert den tatsächlichen Umbau in diesem board-basierten Config-Repo. Code und Zitate aus der ZMK-Dokumentation (CC&nbsp;BY-NC-SA&nbsp;4.0) und Keebarts öffentlicher Konfiguration. Reversibler Umbau, Durchführung auf eigene Verantwortung.</p>
   </div>
 </footer>
 

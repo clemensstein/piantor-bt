@@ -42,67 +42,68 @@
             require-prior-idle-ms = <150>;
         };
 
-        // Layer 1: Ziffer normal, mit Shift -> F-Taste. Das Shift wird beim
+        // Layer 1: Ziffer normal, mit Strg -> F-Taste. Das Strg wird beim
         // Morph entfernt (keep-mods = 0 als Default), es kommt reines Fn an.
+        // Shift+Zahl bleibt damit frei fuer die Symbole (z. B. $ = Shift+4).
         mm_f1: mm_f1 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N1>, <&kp F1>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f2: mm_f2 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N2>, <&kp F2>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f3: mm_f3 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N3>, <&kp F3>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f4: mm_f4 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N4>, <&kp F4>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f5: mm_f5 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N5>, <&kp F5>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f6: mm_f6 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N6>, <&kp F6>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f7: mm_f7 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N7>, <&kp F7>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f8: mm_f8 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N8>, <&kp F8>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f9: mm_f9 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp DE_N9>, <&kp F9>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
         mm_f10: mm_f10 {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&kp N0>, <&kp F10>;
-            mods = <(MOD_LSFT|MOD_RSFT)>;
+            mods = <(MOD_LCTL|MOD_RCTL)>;
         };
     };
 
