@@ -1,0 +1,25 @@
+if SHIELD_PIANTOR_PRO_BT_DONGLE
+
+# Max. 16 Zeichen.
+config ZMK_KEYBOARD_NAME
+    default "Piantor Dongle"
+
+# Der Dongle ist die neue Central-Haelfte.
+config ZMK_SPLIT_ROLE_CENTRAL
+    default y
+
+config ZMK_SPLIT
+    default y
+
+# Zwei Haelften funken an den Dongle.
+config ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS
+    default 2
+
+# Peripherals (2) + gewuenschte BLE-Host-Profile.
+config BT_MAX_CONN
+    default 6
+
+config BT_MAX_PAIRED
+    default 6
+
+endif

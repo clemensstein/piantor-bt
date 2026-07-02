@@ -1,0 +1,7 @@
+/*
+ * Der Dongle nutzt exakt dieselbe Keymap wie die Tastatur.
+ * Dadurch bleibt dein keymap-editor-Workflow unveraendert: Du editierst
+ * weiterhin piantor_pro_bt.keymap, und der Dongle uebernimmt die Aenderungen
+ * beim naechsten Build automatisch.
+ */
+#include "piantor_pro_bt.keymap"
